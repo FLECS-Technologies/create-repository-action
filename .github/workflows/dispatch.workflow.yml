@@ -1,0 +1,59 @@
+name: "Create a new GitHub repository"
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Name of the new repository"
+        type: string
+        required: true
+      org:
+        description: "GitHub organization"
+        type: string
+        required: true
+      description:
+        description: "Description of the new repository"
+        type: string
+        required: false
+      private:
+        description: "Visibility of the new repository"
+        type: boolean
+        required: false
+      auto-init:
+        description: "Create commit with empty README"
+        type: boolean
+        required: false
+      gitignore-template:
+        description: "Create .gitignore from template"
+        type: string
+        required: false
+      license-template:
+        description: "Create LICENSE from template"
+        type: string
+        required: false
+
+jobs:
+  create-repository:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Clone repository"
+        uses: actions/checkout@v4
+      - name: Create GitHub App installation access token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FLECS_WORKFLOW_AUTOMATION_CLIENT_ID }}
+          private-key: ${{ secrets.FLECS_WORKFLOW_AUTOMATION_KEY }}
+          owner: ${{ github.repository_owner }}
+      - name: "Creating repository ${{ inputs.org}}/${{ inputs.name }}"
+        uses: ./
+        with:
+          name: ${{ inputs.name }}
+          org: ${{ inputs.org }}
+          description: ${{ inputs.description }}
+          private: ${{ inputs.private }}
+          auto-init: ${{ inputs.auto-init }}
+          gitignore-template: ${{ inputs.gitignore-template }}
+          license-template: ${{ inputs.license-template }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
