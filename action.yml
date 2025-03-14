@@ -41,6 +41,14 @@ runs:
           echo "Required enviroment variable GITHUB_TOKEN is not set" 1>&2
           exit 1
         fi
+        if [ -z "${{ inputs.name }}" ]; then
+          echo "Required input name is not set" 1>&2
+          exit 1
+        fi
+        if [ -z "${{ inputs.org }}" ]; then
+          echo "Required input org is not set" 1>&2
+          exit 1
+        fi
       shell: bash
     - name: "Build HTTP route"
       id: http-route
