@@ -1,0 +1,84 @@
+name: "Test create-repository-action"
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      FLECS_ACTION_UNIT_TEST: "true"
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "TC01: Basic usage"
+      id: tc01
+      uses: ./
+      with:
+        name: "new-repo"
+        org: "some-org"
+      env:
+        GITHUB_TOKEN: "some-token"
+    - name: "TC01: Validate output"
+      env:
+        OUTPUT: ${{ env.REQUEST_JSON }}
+      run: |
+        EXPECTED_ROUTE="POST /orgs/some-org/repos"
+        ROUTE=$(echo "${OUTPUT}" | jq -rc '.route')
+        if [ "${ROUTE}" != "${EXPECTED_ROUTE}" ]; then
+          echo "❌ TC01: ROUTE assertion failed: ${ROUTE} != ${EXPECTED_ROUTE}" 1>&2
+          exit 1
+        else
+          echo "✅ TC01: ROUTE assertion passed"
+        fi
+
+        EXPECTED_DATA='{"name":"new-repo"}'
+        DATA=$(echo "${OUTPUT}" | jq -rcS '.data')
+        if [ "${DATA}" != "${EXPECTED_DATA}" ]; then
+          echo "❌ TC01: DATA assertion failed: ${DATA} != ${EXPECTED_DATA}" 1>&2
+          exit 1
+        else
+          echo "✅ TC01: DATA assertion passed"
+        fi
+
+    - name: "TC02: Advanced usage"
+      id: tc02
+      uses: ./
+      with:
+        name: "another-new-repo"
+        org: "some-other-org"
+        description: "Some description"
+        private: true
+        auto-init: true
+        gitignore-template: "Rust"
+        license-template: "Apache-2.0"
+      env:
+        GITHUB_TOKEN: "some-token"
+    - name: "TC02: Validate output"
+      env:
+        OUTPUT: ${{ env.REQUEST_JSON }}
+      run: |
+        EXPECTED_ROUTE="POST /orgs/some-other-org/repos"
+        ROUTE=$(echo "${OUTPUT}" | jq -rc '.route')
+        if [ "${ROUTE}" != "${EXPECTED_ROUTE}" ]; then
+          echo "❌ TC02: ROUTE assertion failed: ${ROUTE} != ${EXPECTED_ROUTE}" 1>&2
+          exit 1
+        else
+          echo "✅ TC02: ROUTE assertion passed"
+        fi
+
+        EXPECTED_DATA='{"auto_init":true,"description":"Some description","gitignore_template":"Rust","license_template":"Apache-2.0","name":"another-new-repo","private":true}'
+        DATA=$(echo "${OUTPUT}" | jq -rcS '.data')
+        if [ "${DATA}" != "${EXPECTED_DATA}" ]; then
+          echo "❌ TC02: DATA assertion failed" 1>&2
+          echo "Expected:" 1>&2
+          echo "${DATA}" | jq 1>&2
+          echo "Got:" 1>&2
+          echo "${EXPECTED_DATA}" | jq 1>&2
+          exit 1
+        else
+          echo "✅ TC02: DATA assertion passed"
+        fi
