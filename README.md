@@ -4,7 +4,7 @@ A GitHub action to create new repositories
 # Usage
 ## Minimal example
 ```yml
-uses: FLECS-Technologies/create-repository-action@v1
+uses: FLECS-Technologies/create-repository-action@v1.x
 with:
   name: "repository-name"
   org: "organization"
