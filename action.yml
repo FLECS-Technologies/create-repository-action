@@ -42,6 +42,11 @@ runs:
           exit 1
         fi
       shell: bash
+    - name: "Build HTTP route"
+      id: http-route
+      run: |
+        echo "route=POST /orgs/${{ inputs.org }}/repos" >> "$GITHUB_OUTPUT"
+      shell: bash
     - name: "Build HTTP body"
       id: http-body
       run: |
@@ -61,22 +66,22 @@ runs:
         if [ -n "${{ inputs.license-template }}" ]; then
           JSON=$(echo "${JSON}" | jq -rc '.license_template |= "${{ inputs.license-template}}"')
         fi
-        echo "json=${JSON}" >> "$GITHUB_OUTPUT"
+        echo "data=${JSON}" >> "$GITHUB_OUTPUT"
       shell: bash
     - name: "Unit test"
       if: env.FLECS_ACTION_UNIT_TEST == 'true'
+      env:
+        FLECS_ACTION_ROUTE: ${{ steps.http-route.outputs.route }}
+        FLECS_ACTION_DATA: ${{ steps.http-body.outputs.data }}
       run: |
-        JSON="{}"
-        JSON=$(echo "${JSON}" | jq -rc '.route |= "POST /orgs/${{ inputs.org }}/repos"')
-        JSON=$(echo "${JSON}" | jq -rc '.data |= ${{ steps.http-body.outputs.json }}')
-        echo "REQUEST_JSON=${JSON}" >> "$GITHUB_ENV"
+        echo "FLECS_ACTION_ROUTE=${FLECS_ACTION_ROUTE}" >> "$GITHUB_ENV"
+        echo "FLECS_ACTION_DATA=${FLECS_ACTION_DATA}" >> "$GITHUB_ENV"
       shell: bash
     - name: "Create repository"
       if: env.FLECS_ACTION_UNIT_TEST != 'true'
       uses: octokit/request-action@v2.x
       with:
-        route: POST /orgs/{owner}/repos
-        owner: ${{ inputs.org }}
+        route: ${{ steps.http-route.outputs.route }}
         data: ${{ steps.http-body.outputs.json }}
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
