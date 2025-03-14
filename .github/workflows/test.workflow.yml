@@ -11,74 +11,116 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FLECS_ACTION_UNIT_TEST: "true"
+      FLECS_ACTION_INPUT_NAME: "new-repo"
+      FLECS_ACTION_INPUT_ORG: "some-org"
+      FLECS_ACTION_INPUT_DESCRIPTION: "Some description"
+      FLECS_ACTION_INPUT_PRIVATE: true
+      FLECS_ACTION_INPUT_AUTO_INIT: true
+      FLECS_ACTION_INPUT_GITIGNORE_TEMPLATE: "Rust"
+      FLECS_ACTION_INPUT_LICENSE_TEMPLATE: "Apache-2.0"
+      FLECS_ACTION_ENV_GITHUB_TOKEN: "some-token"
     steps:
-    - uses: actions/checkout@v4
+      - name: "Export variables"
+        id: export-vars
+        run: |
+          echo "input_name=${FLECS_ACTION_INPUT_NAME}" >> "$GITHUB_OUTPUT"
+          echo "input_org=${FLECS_ACTION_INPUT_ORG}" >> "$GITHUB_OUTPUT"
+          echo "input_description=${FLECS_ACTION_INPUT_DESCRIPTION}" >> "$GITHUB_OUTPUT"
+          echo "input_private=${FLECS_ACTION_INPUT_PRIVATE}" >> "$GITHUB_OUTPUT"
+          echo "input_auto_init=${FLECS_ACTION_INPUT_AUTO_INIT}" >> "$GITHUB_OUTPUT"
+          echo "input_gitignore_template=${FLECS_ACTION_INPUT_GITIGNORE_TEMPLATE}" >> "$GITHUB_OUTPUT"
+          echo "input_license_template=${FLECS_ACTION_INPUT_LICENSE_TEMPLATE}" >> "$GITHUB_OUTPUT"
+          echo "input_github_token=${FLECS_ACTION_ENV_GITHUB_TOKEN}" >> "$GITHUB_OUTPUT"
+          echo "env_github_token=${FLECS_ACTION_ENV_GITHUB_TOKEN}" >> "$GITHUB_OUTPUT"
 
-    - name: "TC01: Basic usage"
-      id: tc01
-      uses: ./
-      with:
-        name: "new-repo"
-        org: "some-org"
-      env:
-        GITHUB_TOKEN: "some-token"
-    - name: "TC01: Validate output"
-      env:
-        OUTPUT: ${{ env.REQUEST_JSON }}
-      run: |
-        EXPECTED_ROUTE="POST /orgs/some-org/repos"
-        ROUTE=$(echo "${OUTPUT}" | jq -rc '.route')
-        if [ "${ROUTE}" != "${EXPECTED_ROUTE}" ]; then
-          echo "❌ TC01: ROUTE assertion failed: ${ROUTE} != ${EXPECTED_ROUTE}" 1>&2
-          exit 1
-        else
-          echo "✅ TC01: ROUTE assertion passed"
-        fi
+      - uses: actions/checkout@v4
 
-        EXPECTED_DATA='{"name":"new-repo"}'
-        DATA=$(echo "${OUTPUT}" | jq -rcS '.data')
-        if [ "${DATA}" != "${EXPECTED_DATA}" ]; then
-          echo "❌ TC01: DATA assertion failed: ${DATA} != ${EXPECTED_DATA}" 1>&2
-          exit 1
-        else
-          echo "✅ TC01: DATA assertion passed"
-        fi
+      - name: "TC01: Basic usage"
+        id: tc01
+        uses: ./
+        with:
+          name: ${{ steps.export-vars.outputs.input_name }}
+          org: ${{ steps.export-vars.outputs.input_org }}
+        env:
+          GITHUB_TOKEN: ${{ steps.export-vars.outputs.env_github_token }}
+      - name: "TC01: Validate output"
+        env:
+          FLECS_ACTION_ROUTE: ${{ env.FLECS_ACTION_ROUTE }}
+          FLECS_ACTION_DATA: ${{ env.FLECS_ACTION_DATA }}
+        run: |
+          EXPECTED_ROUTE="POST /orgs/${FLECS_ACTION_INPUT_ORG}/repos"
+          if [ "${FLECS_ACTION_ROUTE}" != "${EXPECTED_ROUTE}" ]; then
+            echo "❌ TC01: ROUTE assertion failed" 1>&2
+            echo "❌ Expected: ${EXPECTED_ROUTE}" 1>&2
+            echo "❌ Got:      ${FLECS_ACTION_ROUTE}" 1>&2
+            exit 1
+          else
+            echo "✅ TC01: ROUTE assertion passed"
+            echo "✅ Expected: ${EXPECTED_ROUTE}"
+            echo "✅ Got:      ${FLECS_ACTION_ROUTE}"
+          fi
 
-    - name: "TC02: Advanced usage"
-      id: tc02
-      uses: ./
-      with:
-        name: "another-new-repo"
-        org: "some-other-org"
-        description: "Some description"
-        private: true
-        auto-init: true
-        gitignore-template: "Rust"
-        license-template: "Apache-2.0"
-      env:
-        GITHUB_TOKEN: "some-token"
-    - name: "TC02: Validate output"
-      env:
-        OUTPUT: ${{ env.REQUEST_JSON }}
-      run: |
-        EXPECTED_ROUTE="POST /orgs/some-other-org/repos"
-        ROUTE=$(echo "${OUTPUT}" | jq -rc '.route')
-        if [ "${ROUTE}" != "${EXPECTED_ROUTE}" ]; then
-          echo "❌ TC02: ROUTE assertion failed: ${ROUTE} != ${EXPECTED_ROUTE}" 1>&2
-          exit 1
-        else
-          echo "✅ TC02: ROUTE assertion passed"
-        fi
+          EXPECTED_DATA=$( echo "{\
+            \"name\":\"${FLECS_ACTION_INPUT_NAME}\"\
+          }" | jq -rcS)
+          FLECS_ACTION_DATA=$(echo "${FLECS_ACTION_DATA}" | jq -rcS)
+          if [ "${FLECS_ACTION_DATA}" != "${EXPECTED_DATA}" ]; then
+            echo "❌ TC01: DATA assertion failed" 1>&2
+            echo "❌ Expected: ${EXPECTED_DATA}" 1>&2
+            echo "❌ Got:      ${FLECS_ACTION_DATA}" 1>&2
+            exit 1
+          else
+            echo "✅ TC01: DATA assertion passed"
+            echo "✅ Expected: ${EXPECTED_DATA}"
+            echo "✅ Got:      ${FLECS_ACTION_DATA}"
+          fi
 
-        EXPECTED_DATA='{"auto_init":true,"description":"Some description","gitignore_template":"Rust","license_template":"Apache-2.0","name":"another-new-repo","private":true}'
-        DATA=$(echo "${OUTPUT}" | jq -rcS '.data')
-        if [ "${DATA}" != "${EXPECTED_DATA}" ]; then
-          echo "❌ TC02: DATA assertion failed" 1>&2
-          echo "Expected:" 1>&2
-          echo "${DATA}" | jq 1>&2
-          echo "Got:" 1>&2
-          echo "${EXPECTED_DATA}" | jq 1>&2
-          exit 1
-        else
-          echo "✅ TC02: DATA assertion passed"
-        fi
+      - name: "TC02: Advanced usage"
+        id: tc02
+        uses: ./
+        with:
+          name: ${{ steps.export-vars.outputs.input_name }}
+          org: ${{ steps.export-vars.outputs.input_org }}
+          description: ${{ steps.export-vars.outputs.input_description }}
+          private: ${{ steps.export-vars.outputs.input_private }}
+          auto-init: ${{ steps.export-vars.outputs.input_auto_init }}
+          gitignore-template: ${{ steps.export-vars.outputs.input_gitignore_template }}
+          license-template: ${{ steps.export-vars.outputs.input_license_template }}
+        env:
+          GITHUB_TOKEN: ${{ steps.export-vars.outputs.env_github_token }}
+      - name: "TC02: Validate output"
+        env:
+          FLECS_ACTION_ROUTE: ${{ env.FLECS_ACTION_ROUTE }}
+          FLECS_ACTION_DATA: ${{ env.FLECS_ACTION_DATA }}
+        run: |
+          EXPECTED_ROUTE="POST /orgs/${FLECS_ACTION_INPUT_ORG}/repos"
+          if [ "${FLECS_ACTION_ROUTE}" != "${EXPECTED_ROUTE}" ]; then
+            echo "❌ TC02: ROUTE assertion failed" 1>&2
+            echo "❌ Expected: ${EXPECTED_ROUTE}" 1>&2
+            echo "❌ Got:      ${FLECS_ACTION_ROUTE}" 1>&2
+            exit 1
+          else
+            echo "✅ TC02: ROUTE assertion passed"
+            echo "✅ Expected: ${EXPECTED_ROUTE}"
+            echo "✅ Got:      ${FLECS_ACTION_ROUTE}"
+          fi
+
+          EXPECTED_DATA=$(echo "{\
+            \"auto_init\":${FLECS_ACTION_INPUT_AUTO_INIT},\
+            \"description\":\"${FLECS_ACTION_INPUT_DESCRIPTION}\",\
+            \"gitignore_template\":\"${FLECS_ACTION_INPUT_GITIGNORE_TEMPLATE}\",\
+            \"license_template\":\"${FLECS_ACTION_INPUT_LICENSE_TEMPLATE}\",\
+            \"name\":\"${FLECS_ACTION_INPUT_NAME}\",\
+            \"private\":${FLECS_ACTION_INPUT_PRIVATE}\
+          }" | jq -rcS)
+          FLECS_ACTION_DATA=$(echo "${FLECS_ACTION_DATA}" | jq -rcS)
+          if [ "${FLECS_ACTION_DATA}" != "${EXPECTED_DATA}" ]; then
+            echo "❌ TC02: DATA assertion failed" 1>&2
+            echo "❌ Expected: ${EXPECTED_DATA}" 1>&2
+            echo "❌ Got:      ${FLECS_ACTION_DATA}" 1>&2
+            exit 1
+          else
+            echo "✅ TC02: DATA assertion passed"
+            echo "✅ Expected: ${EXPECTED_DATA}"
+            echo "✅ Got:      ${FLECS_ACTION_DATA}"
+          fi
